@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Comprehensive IP Diversity Dashboard</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f9;
+            margin: 0;
+            padding: 20px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+            background-color: #fff;
+            box-shadow: 0 2px 3px rgba(0, 0, 0, 0.1);
+        }
+
+        th,
+        td {
+            padding: 10px;
+            text-align: left;
+        }
+
+        th {
+            background-color: #4CAF50;
+            color: white;
+            cursor: pointer;
+            position: relative;
+        }
+
+        th .arrow {
+            margin-left: 5px;
+        }
+
+        td {
+            border-bottom: 1px solid #ddd;
+        }
+
+        tr:hover {
+            background-color: #f1f1f1;
+        }
+
+        a {
+            color: #0b0c0b;
+            text-decoration: none;
+        }
+
+        a:hover {
+            text-decoration: underline;
+        }
+
+        #search-bar {
+            margin-bottom: 20px;
+            padding: 10px;
+            width: 100%;
+            box-sizing: border-box;
+            border: 3px solid black;
+            border-radius: 4px;
+        }
+
+        .red {
+            background-color: #f8d7da;
+            color: #721c24;
+        }
+
+        .yellow {
+            background-color: #fff3cd;
+            color: #856404;
+        }
+
+        .green {
+            background-color: #d4edda;
+            color: #155724;
+        }
+
+        ::placeholder {
+            display: block;
+            font: 1.00rem/3 sans-serif;
+            text-align: left;
+            color: #141311;
+        }
+
+        button {
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-bottom: 10px;
+            transition: background-color 0.3s;
+        }
+
+        button:hover {
+            background-color: #45a049;
+        }
+    </style>
+</head>
+
+<body>
+    <h1 style="text-align: center;">Comprehensive IP Diversity Dashboard</h1>
+    <input type="text" id="search-bar" onkeyup="searchTable()" placeholder="Search server name..">
+    <div style="text-align: left;">
+        <button onclick="sortTable(1)" style="display: inline-block;">Sort</button>
+        <h3 style="display: inline-block; margin-left: 10px; font-size: 16px; color: #333;">Last Fetched: {{ last_run }}
+            IST</h3>
+        <div style="float: right; margin-bottom: 20px;">
+            <label for="start-date">Start Date:</label>
+            <input type="date" id="start-date">
+            <label for="end-date">End Date:</label>
+            <input type="date" id="end-date">
+            <button onclick="filterByDate()">Filter</button>
+            <p id="dateRange"></p>
+
+        </div>
+    </div>
+    <div>
+        <label for="ip-diversity-threshold_start">IP Diversity Range : Start:</label>
+        <input type="number" id="ip-diversity-threshold_start" min="0" max="100" value="0">
+
+        <label for="ip-diversity-threshold_end">End :</label>
+        <input type="number" id="ip-diversity-threshold_end" min="0" max="100" value="0">
+        <button onclick="filterByIPDiversity(1)">Filter by IP Diversity</button>
+    </div>
+    <table>
+        <thead>
+            <tr>
+                <th>Server</th>
+                {% for date in dates %}
+                <th onclick="sortTable({{ loop.index }})" data-date="{{ date }}">{{ date }} <span class="arrow"
+                        id="arrow-{{ loop.index }}">&#8693;</span></th>
+                {% endfor %}
+            </tr>
+        </thead>
+        <tbody id="server-table">
+            {% for server_data in data %}
+            {% for server, details in server_data.items() %}
+            <tr>
+                <td><a href="{{ details.url }}" target="_blank">{{ server }}</a></td>
+                {% for date in dates %}
+                <td class="ip-diversity">{{ details.ipdiversity[date] if date in details.ipdiversity else 'Down' }}</td>
+                {% endfor %}
+            </tr>
+            {% endfor %}
+            {% endfor %}
+        </tbody>
+    </table>
+    <h1 style="text-align: left;">Down IPs</h1>
+    <table>
+        <thead>
+            <th> Down Server Name</th>
+            <th>Status</th>
+            <th>Error</th>
+
+            {% for ip in down %}
+            <tr>
+                <td>{{ ip.server_name }}</td>
+                <td>Down</td>
+
+                <td>{{ ip.status }}</td>
+            </tr>
+            {% endfor %}
+        </thead>
+    </table>
+    <script>
+        let sortOrder = 1;
+
+        // To filter table rows based on search input
+        function searchTable() {
+            var input, filter, table, tr, td, i, txtValue;
+            input = document.getElementById("search-bar");
+            filter = input.value.toUpperCase();
+            table = document.getElementById("server-table");
+            tr = table.getElementsByTagName("tr");
+
+            for (i = 0; i < tr.length; i++) {
+                td = tr[i].getElementsByTagName("td")[0];
+                if (td) {
+                    txtValue = td.textContent || td.innerText;
+                    if (txtValue.toUpperCase().indexOf(filter) > -1) {
+                        tr[i].style.display = "";
+                    } else {
+                        tr[i].style.display = "none";
+                    }
+                }
+            }
+        }
+
+        // Apply color based on the value of ip-diversity percentage
+        function styleIPDiversity() {
+            var cells = document.querySelectorAll(".ip-diversity");
+            cells.forEach(function (cell) {
+                var value = cell.innerText;
+                if (value) {
+                    var percentage = parseFloat(value);
+                    if (percentage < 25 && percentage >= 0) {
+                        cell.classList.add("red");
+                    } else if (percentage >= 25 && percentage <= 50) {
+                        cell.classList.add("yellow");
+                    } else if (percentage > 50) {
+                        cell.classList.add("green");
+                    }
+                }
+            });
+        }
+
+        // Sort table column wise
+        function sortTable(colIndex) {
+            var table, rows, switching, row, xCell, yCell, shouldSwitch;
+            table = document.getElementById("server-table");
+
+            switching = true;
+            while (switching) {
+                switching = false;
+                rows = table.rows;
+                for (row = 0; row < (rows.length - 1); row++) {
+                    shouldSwitch = false;
+                    xCell = rows[row].getElementsByTagName("td")[colIndex];
+                    yCell = rows[row + 1].getElementsByTagName("td")[colIndex];
+                    let xValue = xCell.innerHTML === "Down" ? -1 : parseFloat(xCell.innerHTML);
+                    let yValue = yCell.innerHTML === "Down" ? -1 : parseFloat(yCell.innerHTML);
+                    if (sortOrder * (xValue - yValue) > 0) {
+                        shouldSwitch = true;
+                        break;
+                    }
+                }
+                if (shouldSwitch) {
+                    rows[row].parentNode.insertBefore(rows[row + 1], rows[row]);
+                    switching = true;
+                }
+            }
+            updateArrows(colIndex);
+            sortOrder = -sortOrder;
+        }
+
+        // Update the arrow direction based on sort order
+        function updateArrows(colIndex) {
+            var arrows = document.querySelectorAll(".arrow");
+            arrows.forEach(function (arrow) {
+                arrow.innerHTML = "";
+            });
+            var arrow = document.getElementById("arrow-" + colIndex);
+            if (sortOrder === 1) {
+                arrow.innerHTML = " &#8595; "; // Up arrow
+            } else {
+                arrow.innerHTML = "&#8593;"; // Down arrow
+            }
+        }
+
+        function swapStr(str, first, last) {
+            return str.substr(0, first)
+                + str[last]
+                + str.substring(first + 1, last)
+                + str[first]
+                + str.substr(last + 1);
+        }
+
+        function setMinMaxDates() {
+            const currentDate = new Date();
+            const maxDate = new Date(currentDate);
+            maxDate.setDate(currentDate.getDate() - 1); // yesterday
+
+            const minDate = new Date(currentDate);
+            minDate.setDate(currentDate.getDate() - 11); // 11 days before today
+
+            document.getElementById('start-date').min = formatDate(minDate);
+            document.getElementById('start-date').max = formatDate(maxDate);
+            document.getElementById('end-date').min = formatDate(minDate);
+            document.getElementById('end-date').max = formatDate(maxDate);
+
+            document.getElementById('dateRange').textContent =
+                'Date Range: ' + formatDate1(minDate) + ' to ' + formatDate1(maxDate);
+        }
+
+
+        function formatDate1(date) {
+            const year = date.getFullYear();
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const day = String(date.getDate()).padStart(2, '0');
+            return `${day}-${month}-${year}`;
+        }
+
+        function formatDate(date) {
+            const year = date.getFullYear();
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const day = String(date.getDate()).padStart(2, '0');
+            return `${year}-${month}-${day}`;
+        }
+
+        window.onload = setMinMaxDates;
+
+        // Filter the table based on the selected date range
+        function filterByDate() {
+            const startDate = new Date(document.getElementById('start-date').value);
+            const endDate = new Date(document.getElementById('end-date').value);
+            const ths = document.querySelectorAll('thead th');
+            const rows = document.querySelectorAll('#server-table tr');
+
+            // Show all columns initially
+            ths.forEach(th => th.style.display = '');
+            rows.forEach(row => {
+                row.querySelectorAll('td').forEach(td => td.style.display = '');
+            });
+
+            // Hide columns outside the date range
+            ths.forEach((th, index) => {
+                if (index > 0) { // Skip the first column (Server)
+                    let thDate = th.getAttribute('data-date');
+                    thDate = swapStr(thDate, 0, 3);
+                    thDate = swapStr(thDate, 1, 4);
+                    const converteddate = new Date(thDate);
+                    // Convert to IST by adding 5 hours and 30 minutes
+                    const istOffset = 5.5 * 60 * 60 * 1000; // IST offset in milliseconds
+                    const istDate = new Date(converteddate.getTime() + istOffset);
+                    if (istDate < startDate || istDate > endDate) {
+                        th.style.display = 'none';
+                        rows.forEach(row => {
+                            row.querySelectorAll('td')[index].style.display = 'none';
+                        });
+                    }
+                }
+            });
+        }
+
+        function filterByIPDiversity(colIndex) {
+            var table = document.getElementById("server-table");
+            var rows = table.rows;
+            var threshold_start = parseFloat(document.getElementById("ip-diversity-threshold_start").value);
+            var threshold_end = parseFloat(document.getElementById("ip-diversity-threshold_end").value);
+            for (var row = 0; row < (rows.length); row++) { // Exclude header row (if any)
+                var xCell = rows[row].getElementsByTagName("td")[colIndex];
+                var xValue = xCell.innerHTML === "Down" ? -1 : parseFloat(xCell.innerHTML);
+
+                // Toggle row visibility based on the condition xValue > threshold
+                if (xValue >= threshold_start && xValue <= threshold_end) {
+                    rows[row].style.display = ""; // Show the row
+                } else {
+                    rows[row].style.display = "none"; // Hide the row
+                }
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', function () {
+            styleIPDiversity();
+            filterByIPDiversity;
+        });
+    </script>
+</body>
+
+</html>
